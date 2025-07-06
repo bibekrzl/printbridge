@@ -1,0 +1,420 @@
+NEXT.JS WEBSOCKET INTEGRATION GUIDE FOR PRINTBRIDGE SERVER
+================================================================
+
+This guide shows how to connect your Next.js webapp to the PrintBridge WebSocket server
+for automatic printer discovery and label printing.
+
+PREREQUISITES:
+- PrintBridge server running on localhost:8080
+- Next.js project set up
+- WebSocket support enabled
+
+================================================================
+1. CREATE A WEBSOCKET HOOK (RECOMMENDED)
+================================================================
+
+Create file: hooks/usePrintBridge.ts
+
+```typescript
+import { useState, useEffect, useRef } from 'react';
+
+interface PrintBridgeMessage {
+  type?: string;
+  status?: string;
+  message?: string;
+  printers?: string[];
+  defaultPrinter?: string;
+  success?: boolean;
+  printerName?: string;
+  errorMessage?: string;
+}
+
+export const usePrintBridge = () => {
+  const [isConnected, setIsConnected] = useState(false);
+  const [printers, setPrinters] = useState<string[]>([]);
+  const [defaultPrinter, setDefaultPrinter] = useState<string>('');
+  const [lastPrintResult, setLastPrintResult] = useState<any>(null);
+  const wsRef = useRef<WebSocket | null>(null);
+  const reconnectTimeoutRef = useRef<NodeJS.Timeout>();
+
+  const connect = () => {
+    try {
+      const ws = new WebSocket('ws://localhost:8080/ws');
+      wsRef.current = ws;
+
+      ws.onopen = () => {
+        console.log('✅ Connected to PrintBridge server');
+        setIsConnected(true);
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const data: PrintBridgeMessage = JSON.parse(event.data);
+          console.log('📨 Received:', data);
+
+          if (data.type === 'connection') {
+            setPrinters(data.printers || []);
+            setDefaultPrinter(data.defaultPrinter || '');
+            console.log('🖨️ Printers discovered:', data.printers);
+          }
+
+          if (data.success !== undefined) {
+            setLastPrintResult(data);
+            console.log('🖨️ Print job result:', data);
+          }
+        } catch (error) {
+          console.error('❌ Error parsing message:', error);
+        }
+      };
+
+      ws.onclose = () => {
+        console.log('🔌 Disconnected from PrintBridge');
+        setIsConnected(false);
+        setPrinters([]);
+        setDefaultPrinter('');
+        
+        // Auto-reconnect after 3 seconds
+        reconnectTimeoutRef.current = setTimeout(connect, 3000);
+      };
+
+      ws.onerror = (error) => {
+        console.error('❌ WebSocket error:', error);
+        setIsConnected(false);
+      };
+    } catch (error) {
+      console.error('❌ Connection error:', error);
+      setIsConnected(false);
+    }
+  };
+
+  const disconnect = () => {
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current);
+    }
+    if (wsRef.current) {
+      wsRef.current.close();
+    }
+  };
+
+  const sendPrintJob = (base64Image: string, printerName?: string) => {
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      console.log('🖨️ Sending print job...');
+      wsRef.current.send(base64Image);
+      return true;
+    } else {
+      console.error('❌ WebSocket not connected');
+      return false;
+    }
+  };
+
+  useEffect(() => {
+    connect();
+    return () => disconnect();
+  }, []);
+
+  return {
+    isConnected,
+    printers,
+    defaultPrinter,
+    lastPrintResult,
+    sendPrintJob,
+    connect,
+    disconnect
+  };
+};
+```
+
+================================================================
+2. CREATE A PRINTBRIDGE PROVIDER (CONTEXT)
+================================================================
+
+Create file: contexts/PrintBridgeContext.tsx
+
+```typescript
+import React, { createContext, useContext, ReactNode } from 'react';
+import { usePrintBridge } from '../hooks/usePrintBridge';
+
+interface PrintBridgeContextType {
+  isConnected: boolean;
+  printers: string[];
+  defaultPrinter: string;
+  lastPrintResult: any;
+  sendPrintJob: (base64Image: string, printerName?: string) => boolean;
+}
+
+const PrintBridgeContext = createContext<PrintBridgeContextType | undefined>(undefined);
+
+export const PrintBridgeProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  const printBridge = usePrintBridge();
+
+  return (
+    <PrintBridgeContext.Provider value={printBridge}>
+      {children}
+    </PrintBridgeContext.Provider>
+  );
+};
+
+export const usePrintBridgeContext = () => {
+  const context = useContext(PrintBridgeContext);
+  if (context === undefined) {
+    throw new Error('usePrintBridgeContext must be used within a PrintBridgeProvider');
+  }
+  return context;
+};
+```
+
+================================================================
+3. WRAP YOUR APP WITH THE PROVIDER
+================================================================
+
+Update file: pages/_app.tsx (for Pages Router) or app/layout.tsx (for App Router)
+
+For Pages Router (pages/_app.tsx):
+```typescript
+import { PrintBridgeProvider } from '../contexts/PrintBridgeContext';
+
+function MyApp({ Component, pageProps }) {
+  return (
+    <PrintBridgeProvider>
+      <Component {...pageProps} />
+    </PrintBridgeProvider>
+  );
+}
+
+export default MyApp;
+```
+
+For App Router (app/layout.tsx):
+```typescript
+import { PrintBridgeProvider } from '../contexts/PrintBridgeContext';
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
+  return (
+    <html lang="en">
+      <body>
+        <PrintBridgeProvider>
+          {children}
+        </PrintBridgeProvider>
+      </body>
+    </html>
+  );
+}
+```
+
+================================================================
+4. CREATE A PRINT BUTTON COMPONENT
+================================================================
+
+Create file: components/PrintButton.tsx
+
+```typescript
+import { usePrintBridgeContext } from '../contexts/PrintBridgeContext';
+
+export const PrintButton: React.FC = () => {
+  const { isConnected, printers, defaultPrinter, sendPrintJob } = usePrintBridgeContext();
+
+  const handlePrint = async () => {
+    // Convert your image to base64
+    const base64Image = 'your-base64-image-string';
+    
+    if (sendPrintJob(base64Image, defaultPrinter)) {
+      console.log('✅ Print job sent successfully');
+    } else {
+      console.error('❌ Failed to send print job');
+    }
+  };
+
+  return (
+    <div>
+      <div>Status: {isConnected ? '🟢 Connected' : '🔴 Disconnected'}</div>
+      <div>Available Printers: {printers.join(', ')}</div>
+      <div>Default Printer: {defaultPrinter}</div>
+      <button 
+        onClick={handlePrint}
+        disabled={!isConnected}
+      >
+        Print Label
+      </button>
+    </div>
+  );
+};
+```
+
+================================================================
+5. CREATE A CONNECTION STATUS COMPONENT
+================================================================
+
+Create file: components/ConnectionStatus.tsx
+
+```typescript
+import { usePrintBridgeContext } from '../contexts/PrintBridgeContext';
+
+export const ConnectionStatus: React.FC = () => {
+  const { isConnected, printers } = usePrintBridgeContext();
+
+  return (
+    <div className={`status ${isConnected ? 'connected' : 'disconnected'}`}>
+      <div>🖨️ PrintBridge: {isConnected ? 'Connected' : 'Disconnected'}</div>
+      {isConnected && (
+        <div>🖨️ Available Printers: {printers.length}</div>
+      )}
+    </div>
+  );
+};
+```
+
+================================================================
+6. ADD TO YOUR PAGE
+================================================================
+
+Update file: pages/index.tsx (for Pages Router) or app/page.tsx (for App Router)
+
+```typescript
+import { ConnectionStatus } from '../components/ConnectionStatus';
+import { PrintButton } from '../components/PrintButton';
+
+export default function Home() {
+  return (
+    <div>
+      <h1>My Label Printing App</h1>
+      <ConnectionStatus />
+      <PrintButton />
+    </div>
+  );
+}
+```
+
+================================================================
+7. ADD CSS STYLES (OPTIONAL)
+================================================================
+
+Add to your global CSS or component styles:
+
+```css
+.status {
+  padding: 10px;
+  border-radius: 4px;
+  margin-bottom: 20px;
+}
+
+.status.connected {
+  background: #d4edda;
+  color: #155724;
+  border: 1px solid #c3e6cb;
+}
+
+.status.disconnected {
+  background: #f8d7da;
+  color: #721c24;
+  border: 1px solid #f5c6cb;
+}
+
+button {
+  padding: 8px 16px;
+  background: #007bff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+button:hover {
+  background: #0056b3;
+}
+
+button:disabled {
+  background: #6c757d;
+  cursor: not-allowed;
+}
+```
+
+================================================================
+8. INSTALLATION STEPS
+================================================================
+
+1. Create the files above in your Next.js project structure
+2. Wrap your app with PrintBridgeProvider in _app.tsx or layout.tsx
+3. Use the hook in your components
+4. Start your PrintBridge server:
+   ```bash
+   cd PrintBridgeTrayApp
+   dotnet run
+   ```
+5. Start your Next.js app:
+   ```bash
+   npm run dev
+   ```
+
+================================================================
+9. TESTING
+================================================================
+
+1. Open your Next.js app in the browser
+2. Open browser developer tools (F12)
+3. Check the console for connection logs
+4. You should see:
+   - "✅ Connected to PrintBridge server"
+   - "🖨️ Printers discovered: [printer list]"
+5. The connection status should show "Connected"
+6. Available printers should be displayed
+
+================================================================
+10. TROUBLESHOOTING
+================================================================
+
+If connection fails:
+1. Make sure PrintBridge server is running on localhost:8080
+2. Check browser console for error messages
+3. Verify WebSocket is supported in your browser
+4. Check if firewall is blocking the connection
+5. Try accessing http://localhost:8080 directly to verify server is up
+
+================================================================
+11. KEY FEATURES
+================================================================
+
+✅ Auto-connect on app load
+✅ Auto-reconnect every 3 seconds if disconnected
+✅ Real-time printer discovery
+✅ Automatic default printer selection
+✅ Print job status updates
+✅ Error handling and logging
+✅ TypeScript support
+✅ React hooks integration
+
+================================================================
+12. USAGE EXAMPLES
+================================================================
+
+Basic usage in a component:
+```typescript
+import { usePrintBridgeContext } from '../contexts/PrintBridgeContext';
+
+export const MyComponent = () => {
+  const { isConnected, printers, sendPrintJob } = usePrintBridgeContext();
+  
+  const printLabel = () => {
+    const base64Image = 'your-image-base64-string';
+    sendPrintJob(base64Image);
+  };
+  
+  return (
+    <div>
+      <p>Connected: {isConnected ? 'Yes' : 'No'}</p>
+      <p>Printers: {printers.join(', ')}</p>
+      <button onClick={printLabel}>Print</button>
+    </div>
+  );
+};
+```
+
+================================================================
+END OF GUIDE
+================================================================
+
+Your Next.js app will now automatically connect to the PrintBridge server
+and provide real-time printer discovery and printing capabilities! 

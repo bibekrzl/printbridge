@@ -1,0 +1,14 @@
+C:\Users\nup_2\Downloads\ServerInstalabel-main\ServerInstalabel-main\PrintBridgeTrayApp\obj\Debug\net9.0-windows\PrintBridgeTrayApp.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\nup_2\Downloads\ServerInstalabel-main\ServerInstalabel-main\PrintBridgeTrayApp\obj\Debug\net9.0-windows\PrintBridgeTrayApp.AssemblyInfoInputs.cache
+C:\Users\nup_2\Downloads\ServerInstalabel-main\ServerInstalabel-main\PrintBridgeTrayApp\obj\Debug\net9.0-windows\PrintBridgeTrayApp.AssemblyInfo.cs
+C:\Users\nup_2\Downloads\ServerInstalabel-main\ServerInstalabel-main\PrintBridgeTrayApp\obj\Debug\net9.0-windows\PrintBridgeTrayApp.csproj.CoreCompileInputs.cache
+C:\Users\nup_2\Downloads\ServerInstalabel-main\ServerInstalabel-main\PrintBridgeTrayApp\bin\Debug\net9.0-windows\PrintBridgeTrayApp.exe
+C:\Users\nup_2\Downloads\ServerInstalabel-main\ServerInstalabel-main\PrintBridgeTrayApp\bin\Debug\net9.0-windows\PrintBridgeTrayApp.deps.json
+C:\Users\nup_2\Downloads\ServerInstalabel-main\ServerInstalabel-main\PrintBridgeTrayApp\bin\Debug\net9.0-windows\PrintBridgeTrayApp.runtimeconfig.json
+C:\Users\nup_2\Downloads\ServerInstalabel-main\ServerInstalabel-main\PrintBridgeTrayApp\bin\Debug\net9.0-windows\PrintBridgeTrayApp.dll
+C:\Users\nup_2\Downloads\ServerInstalabel-main\ServerInstalabel-main\PrintBridgeTrayApp\bin\Debug\net9.0-windows\PrintBridgeTrayApp.pdb
+C:\Users\nup_2\Downloads\ServerInstalabel-main\ServerInstalabel-main\PrintBridgeTrayApp\obj\Debug\net9.0-windows\PrintBridgeTrayApp.dll
+C:\Users\nup_2\Downloads\ServerInstalabel-main\ServerInstalabel-main\PrintBridgeTrayApp\obj\Debug\net9.0-windows\refint\PrintBridgeTrayApp.dll
+C:\Users\nup_2\Downloads\ServerInstalabel-main\ServerInstalabel-main\PrintBridgeTrayApp\obj\Debug\net9.0-windows\PrintBridgeTrayApp.pdb
+C:\Users\nup_2\Downloads\ServerInstalabel-main\ServerInstalabel-main\PrintBridgeTrayApp\obj\Debug\net9.0-windows\PrintBridgeTrayApp.genruntimeconfig.cache
+C:\Users\nup_2\Downloads\ServerInstalabel-main\ServerInstalabel-main\PrintBridgeTrayApp\obj\Debug\net9.0-windows\ref\PrintBridgeTrayApp.dll
